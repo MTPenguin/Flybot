@@ -1,10 +1,13 @@
 const gui = () => {
   const jiraParts = (s) => {
-    const sep = s.indexOf('-')
+    // look for hyphen separator first
+    const hyphenIdx = s.indexOf('-')
+    // then space
+    const sepIndex = ~hyphenIdx ? hyphenIdx : s.indexOf(' ')
     const empty = []
-    if (!~sep) return empty
-    const alphaChars = s.substring(0, sep).toUpperCase()
-    const numChars = s.substring(sep + 1)
+    if (!~sepIndex) return empty
+    const alphaChars = s.substring(0, sepIndex).toUpperCase()
+    const numChars = s.substring(sepIndex + 1)
     const num = parseInt(numChars)
     if (isNaN(num)) return [alphaChars, numChars]
     return [alphaChars, String(num).padStart(numChars.length, '0')]

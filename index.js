@@ -263,7 +263,7 @@ module.exports = (app, { getRouter }) => {
     const repo = repository.name
     const issueBody = payload.issue.body
 
-    const DEBUG = false
+    const DEBUG = true
 
     DEBUG && consoleLog(thisFile, 'issues.opened context.name & .id:', context.name, context.id)
 
@@ -291,6 +291,9 @@ module.exports = (app, { getRouter }) => {
     }
 
     if (!(jsonBody.jira && jsonBody.scope)) throw new Error('Missing parameter(s) jsonBody.jira && jsonBody.scope ' + JSON.stringify(jsonBody))
+    // Already done
+    if (payload.action === 'edited' && jsonBody.newVersion) return
+
 
     /**
      * Get current version
@@ -353,13 +356,24 @@ module.exports = (app, { getRouter }) => {
 
 
     // Create a new branch
-    let result = await octokit.git.createRef({
-      owner,
-      repo,
-      ref: `refs/heads/${newBranch}`,
-      sha: mergeBranch.data.commit.sha,
-      key: payload.issue.number
-    });
+    try {
+      let result = await octokit.git.createRef({
+        owner,
+        repo,
+        ref: `refs/heads/${newBranch}`,
+        sha: mergeBranch.data.commit.sha,
+        key: payload.issue.number
+      });
+    } catch (error) {
+      console.error(thisFile, 'New Branch', error.message)
+      // Create a new issue comment
+      const issueComment = context.issue({
+        body: error.message,
+      });
+      result = await octokit.issues.createComment(issueComment);
+      DEBUG && consoleLog(thisFile, 'issue ERROR comment result:', result)
+      throw error
+    }
     DEBUG && consoleLog(thisFile, 'branch result:', result)
 
 
@@ -435,184 +449,6 @@ module.exports = (app, { getRouter }) => {
     DEBUG && consoleLog(thisFile, 'issue update result:', result)
   });
 
-  // index.js Push event context.payload: {
-  //   ref: 'refs/heads/376-NEW-001-data-v3.0.20230414181533',
-  //   before: '21031c8bfaf448e43b3a34b421547ec9b52fea9b',
-  //   after: '1c9df66d126351773b17e83d983b7b75d7809184',
-  //   repository: {
-  //     id: 607309155,
-  //     node_id: 'R_kgDOJDLNYw',
-  //     name: 'AdvWorksComm',
-  //     full_name: 'MTPenguin/AdvWorksComm',
-  //     private: false,
-  //     owner: {
-  //       name: 'MTPenguin',
-  //       email: '39835555+MTPenguin@users.noreply.github.com',
-  //       login: 'MTPenguin',
-  //       id: 39835555,
-  //       node_id: 'MDQ6VXNlcjM5ODM1NTU1',
-  //       avatar_url: 'https://avatars.githubusercontent.com/u/39835555?v=4',
-  //       gravatar_id: '',
-  //       url: 'https://api.github.com/users/MTPenguin',
-  //       html_url: 'https://github.com/MTPenguin',
-  //       followers_url: 'https://api.github.com/users/MTPenguin/followers',
-  //       following_url: 'https://api.github.com/users/MTPenguin/following{/other_user}',
-  //       gists_url: 'https://api.github.com/users/MTPenguin/gists{/gist_id}',
-  //       starred_url: 'https://api.github.com/users/MTPenguin/starred{/owner}{/repo}',
-  //       subscriptions_url: 'https://api.github.com/users/MTPenguin/subscriptions',
-  //       organizations_url: 'https://api.github.com/users/MTPenguin/orgs',
-  //       repos_url: 'https://api.github.com/users/MTPenguin/repos',
-  //       events_url: 'https://api.github.com/users/MTPenguin/events{/privacy}',
-  //       received_events_url: 'https://api.github.com/users/MTPenguin/received_events',
-  //       type: 'User',
-  //       site_admin: false
-  //     },
-  //     html_url: 'https://github.com/MTPenguin/AdvWorksComm',
-  //     description: null,
-  //     fork: false,
-  //     url: 'https://github.com/MTPenguin/AdvWorksComm',
-  //     forks_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/forks',
-  //     keys_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/keys{/key_id}',
-  //     collaborators_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/collaborators{/collaborator}',
-  //     teams_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/teams',
-  //     hooks_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/hooks',
-  //     issue_events_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/issues/events{/number}',
-  //     events_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/events',
-  //     assignees_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/assignees{/user}',
-  //     branches_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/branches{/branch}',
-  //     tags_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/tags',
-  //     blobs_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/git/blobs{/sha}',
-  //     git_tags_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/git/tags{/sha}',
-  //     git_refs_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/git/refs{/sha}',
-  //     trees_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/git/trees{/sha}',
-  //     statuses_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/statuses/{sha}',
-  //     languages_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/languages',
-  //     stargazers_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/stargazers',
-  //     contributors_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/contributors',
-  //     subscribers_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/subscribers',
-  //     subscription_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/subscription',
-  //     commits_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/commits{/sha}',
-  //     git_commits_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/git/commits{/sha}',
-  //     comments_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/comments{/number}',
-  //     issue_comment_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/issues/comments{/number}',
-  //     contents_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/contents/{+path}',
-  //     compare_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/compare/{base}...{head}',
-  //     merges_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/merges',
-  //     archive_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/{archive_format}{/ref}',
-  //     downloads_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/downloads',
-  //     issues_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/issues{/number}',
-  //     pulls_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/pulls{/number}',
-  //     milestones_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/milestones{/number}',
-  //     notifications_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/notifications{?since,all,participating}',
-  //     labels_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/labels{/name}',
-  //     releases_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/releases{/id}',
-  //     deployments_url: 'https://api.github.com/repos/MTPenguin/AdvWorksComm/deployments',
-  //     created_at: 1677522385,
-  //     updated_at: '2023-04-14T18:14:43Z',
-  //     pushed_at: 1681823980,
-  //     git_url: 'git://github.com/MTPenguin/AdvWorksComm.git',
-  //     ssh_url: 'git@github.com:MTPenguin/AdvWorksComm.git',
-  //     clone_url: 'https://github.com/MTPenguin/AdvWorksComm.git',
-  //     svn_url: 'https://github.com/MTPenguin/AdvWorksComm',
-  //     homepage: null,
-  //     size: 1802,
-  //     stargazers_count: 0,
-  //     watchers_count: 0,
-  //     language: 'TSQL',
-  //     has_issues: true,
-  //     has_projects: true,
-  //     has_downloads: true,
-  //     has_wiki: true,
-  //     has_pages: true,
-  //     has_discussions: false,
-  //     forks_count: 1,
-  //     mirror_url: null,
-  //     archived: false,
-  //     disabled: false,
-  //     open_issues_count: 1,
-  //     license: null,
-  //     allow_forking: true,
-  //     is_template: false,
-  //     web_commit_signoff_required: false,
-  //     topics: [],
-  //     visibility: 'public',
-  //     forks: 1,
-  //     open_issues: 1,
-  //     watchers: 0,
-  //     default_branch: 'dev1',
-  //     stargazers: 0,
-  //     master_branch: 'dev1'
-  //   },
-  //   pusher: {
-  //     name: 'MTPenguin',
-  //     email: '39835555+MTPenguin@users.noreply.github.com'
-  //   },
-  //   sender: {
-  //     login: 'MTPenguin',
-  //     id: 39835555,
-  //     node_id: 'MDQ6VXNlcjM5ODM1NTU1',
-  //     avatar_url: 'https://avatars.githubusercontent.com/u/39835555?v=4',
-  //     gravatar_id: '',
-  //     url: 'https://api.github.com/users/MTPenguin',
-  //     html_url: 'https://github.com/MTPenguin',
-  //     followers_url: 'https://api.github.com/users/MTPenguin/followers',
-  //     following_url: 'https://api.github.com/users/MTPenguin/following{/other_user}',
-  //     gists_url: 'https://api.github.com/users/MTPenguin/gists{/gist_id}',
-  //     starred_url: 'https://api.github.com/users/MTPenguin/starred{/owner}{/repo}',
-  //     subscriptions_url: 'https://api.github.com/users/MTPenguin/subscriptions',
-  //     organizations_url: 'https://api.github.com/users/MTPenguin/orgs',
-  //     repos_url: 'https://api.github.com/users/MTPenguin/repos',
-  //     events_url: 'https://api.github.com/users/MTPenguin/events{/privacy}',
-  //     received_events_url: 'https://api.github.com/users/MTPenguin/received_events',
-  //     type: 'User',
-  //     site_admin: false
-  //   },
-  //   installation: {
-  //     id: 35320756,
-  //     node_id: 'MDIzOkludGVncmF0aW9uSW5zdGFsbGF0aW9uMzUzMjA3NTY='
-  //   },
-  //   created: false,
-  //   deleted: false,
-  //   forced: false,
-  //   base_ref: null,
-  //   compare: 'https://github.com/MTPenguin/AdvWorksComm/compare/21031c8bfaf4...1c9df66d1263',
-  //   commits: [
-  //     {
-  //       id: '1c9df66d126351773b17e83d983b7b75d7809184',
-  //       tree_id: '47ca0633dff832fc12a3f00e3e5a7f758cf087af',
-  //       distinct: true,
-  //       message: 'Update flyway.conf',
-  //       timestamp: '2023-04-18T07:19:40-06:00',
-  //       url: 'https://github.com/MTPenguin/AdvWorksComm/commit/1c9df66d126351773b17e83d983b7b75d7809184',
-  //       author: [Object],
-  //       committer: [Object],
-  //       added: [],
-  //       removed: [],
-  //       modified: [Array]
-  //     }
-  //   ],
-  //   head_commit: {
-  //     id: '1c9df66d126351773b17e83d983b7b75d7809184',
-  //     tree_id: '47ca0633dff832fc12a3f00e3e5a7f758cf087af',
-  //     distinct: true,
-  //     message: 'Update flyway.conf',
-  //     timestamp: '2023-04-18T07:19:40-06:00',
-  //     url: 'https://github.com/MTPenguin/AdvWorksComm/commit/1c9df66d126351773b17e83d983b7b75d7809184',
-  //     author: {
-  //       name: 'MTPenguin',
-  //       email: '39835555+MTPenguin@users.noreply.github.com',
-  //       username: 'MTPenguin'
-  //     },
-  //     committer: {
-  //       name: 'GitHub',
-  //       email: 'noreply@github.com',
-  //       username: 'web-flow'
-  //     },
-  //     added: [],
-  //     removed: [],
-  //     modified: [ 'flyway.conf' ]
-  //   }
-  // }
   /*******************                  ON PUSH                  *******************/
   app.on('push', async (context) => {
     const commits = context.payload.commits
@@ -883,9 +719,11 @@ module.exports = (app, { getRouter }) => {
     const owner = repository.owner.login
     const repo = repository.name
 
-    const DEBUG = !Array(['push', 'pull_request_review', 'check_run']).includes(context.name)
+    const array = ['issues', 'issue_comment', 'push', 'pull_request_review', 'check_run']
+    const DEBUG = !array.includes(context.name)
     DEBUG && consoleLog(thisFile, 'onAny context.name & .id:', context.name, context.id)
-    DEBUG && consoleLog(thisFile, 'onAny payload:', payload)
+    DEBUG && consoleLog(thisFile, 'onAny array:', array)
+    // DEBUG && consoleLog(thisFile, 'onAny payload:', payload)
   })
 }
 
