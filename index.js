@@ -291,7 +291,7 @@ module.exports = (app, { getRouter }) => {
     }
 
     if (!(jsonBody.jira && jsonBody.scope)) throw new Error('Missing parameter(s) jsonBody.jira && jsonBody.scope ' + JSON.stringify(jsonBody))
-    // Already done
+    // Already done on opened
     if (payload.action === 'edited' && jsonBody.newVersion) return
 
 
